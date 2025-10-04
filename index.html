@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Calculator</title>
+    <link rel="license" href="LICENSE">
+    <meta name="description" content="A simple, clean, and functional web-based calculator for basic arithmetic operations.">
+    
+    <style>
+        /* General styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f4f7f6;
+            margin: 0;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Calculator container */
+        #calculator {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 320px;
+            box-sizing: border-box;
+        }
+
+        /* Display area */
+        #display {
+            margin-bottom: 20px;
+        }
+
+        #result {
+            width: 100%;
+            padding: 15px;
+            font-size: 2.5em;
+            text-align: right;
+            border: none;
+            background-color: #eef1f3;
+            border-radius: 10px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+            color: #333;
+            box-sizing: border-box;
+            height: 70px; /* Fixed height for display */
+            overflow: hidden; /* Hide overflow text */
+            white-space: nowrap; /* Prevent text wrapping */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+        }
+
+        /* Buttons layout */
+        #buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        /* Button base style */
+        .btn {
+            background-color: #f0f2f5;
+            border: none;
+            border-radius: 10px;
+            padding: 20px 0;
+            font-size: 1.5em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            color: #555;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none; /* Prevent text selection */
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        }
+
+        .btn:hover {
+            background-color: #e0e2e5;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:active {
+            background-color: #d0d2d5;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            transform: translateY(1px);
+        }
+
+        /* Operator buttons */
+        .btn.operator {
+            background-color: #a0d2eb; /* Light blue */
+            color: #ffffff;
+        }
+
+        .btn.operator:hover {
+            background-color: #8acfe5;
+        }
+
+        /* Equals button */
+        .btn.equals {
+            background-color: #6a994e; /* Green */
+            color: #ffffff;
+            grid-column: span 2; /* Span two columns */
+        }
+
+        .btn.equals:hover {
+            background-color: #5d8a43;
+        }
+
+        /* Clear button */
+        .btn.clear {
+            background-color: #e76f51; /* Reddish orange */
+            color: #ffffff;
+        }
+
+        .btn.clear:hover {
+            background-color: #d06248;
+        }
+
+        /* Zero button */
+        .btn.zero {
+            grid-column: span 2; /* Span two columns */
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 400px) {
+            #calculator {
+                width: 95%;
+                padding: 15px;
+            }
+            #result {
+                font-size: 2em;
+                padding: 12px;
+                height: 60px;
+            }
+            .btn {
+                padding: 15px 0;
+                font-size: 1.3em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="calculator">
+        <div id="display">
+            <input type="text" id="result" value="0" readonly aria-live="polite" aria-atomic="true">
+        </div>
+        <div id="buttons">
+            <button class="btn clear" data-action="clear" aria-label="Clear">C</button>
+            <button class="btn operator" data-action="divide" aria-label="Divide">/</button>
+            <button class="btn operator" data-action="multiply" aria-label="Multiply">*</button>
+
+            <button class="btn" data-value="7" aria-label="Seven">7</button>
+            <button class="btn" data-value="8" aria-label="Eight">8</button>
+            <button class="btn" data-value="9" aria-label="Nine">9</button>
+            <button class="btn operator" data-action="subtract" aria-label="Subtract">-</button>
+
+            <button class="btn" data-value="4" aria-label="Four">4</button>
+            <button class="btn" data-value="5" aria-label="Five">5</button>
+            <button class="btn" data-value="6" aria-label="Six">6</button>
+            <button class="btn operator" data-action="add" aria-label="Add">+</button>
+
+            <button class="btn" data-value="1" aria-label="One">1</button>
+            <button class="btn" data-value="2" aria-label="Two">2</button>
+            <button class="btn" data-value="3" aria-label="Three">3</button>
+
+            <button class="btn zero" data-value="0" aria-label="Zero">0</button>
+            <button class="btn" data-value="." aria-label="Decimal point">.</button>
+            <button class="btn equals" data-action="equals" aria-label="Equals">=</button>
+        </div>
+    </div>
+
+    <script>
+        const display = document.getElementById('result');
+        const buttons = document.getElementById('buttons');
+
+        let currentInput = '0';
+        let previousInput = '';
+        let operator = null;
+        let shouldResetDisplay = false; // Flag to clear display after operator or equals
+        const MAX_DISPLAY_LENGTH = 15; // Max characters to display before scientific notation or truncation
+
+        function updateDisplay() {
+            // Format number for display, handle large numbers with scientific notation
+            let displayValue = currentInput;
+            if (currentInput.length > MAX_DISPLAY_LENGTH) {
+                // Try to parse as float to use toFixed or toExponential
+                const num = parseFloat(currentInput);
+                if (!isNaN(num)) {
+                    if (Math.abs(num) >= 1e15 || Math.abs(num) < 1e-10 && num !== 0) { // Very large or very small numbers
+                        displayValue = num.toExponential(7); // Use scientific notation
+                    } else {
+                        displayValue = num.toPrecision(MAX_DISPLAY_LENGTH - 5); // Limit precision
+                    }
+                }
+            }
+            display.value = displayValue;
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            previousInput = '';
+            operator = null;
+            shouldResetDisplay = false;
+            updateDisplay();
+        }
+
+        function appendNumber(number) {
+            if (currentInput === 'Error: Div by 0' || currentInput === 'Error') {
+                clearAll(); // Clear error state before new input
+            }
+
+            if (shouldResetDisplay) {
+                currentInput = number;
+                shouldResetDisplay = false;
+            } else if (number === '.' && currentInput.includes('.')) {
+                return; // Do nothing if decimal already exists
+            } else if (currentInput === '0' && number !== '.') {
+                currentInput = number; // Replace '0' with the first digit (unless it's a decimal)
+            } else {
+                currentInput += number;
+            }
+            updateDisplay();
+        }
+
+        function chooseOperator(nextOperator) {
+            if (currentInput === 'Error: Div by 0' || currentInput === 'Error') return; // Do not allow operations after an error
+
+            if (operator && previousInput !== '') {
+                // If there's a pending operation, calculate it first
+                calculate();
+            }
+
+            previousInput = currentInput;
+            operator = nextOperator;
+            shouldResetDisplay = true; // Next number pressed will clear the display
+        }
+
+        function calculate() {
+            if (previousInput === '' || operator === null || currentInput === '') {
+                return; // Not enough operands or operator for calculation
+            }
+
+            const prev = parseFloat(previousInput);
+            const current = parseFloat(currentInput);
+
+            if (isNaN(prev) || isNaN(current)) {
+                currentInput = 'Error';
+                updateDisplay();
+                return;
+            }
+
+            let result;
+            switch (operator) {
+                case '+':
+                    result = prev + current;
+                    break;
+                case '-':
+                    result = prev - current;
+                    break;
+                case '*':
+                    result = prev * current;
+                    break;
+                case '/':
+                    if (current === 0) {
+                        currentInput = 'Error: Div by 0';
+                        previousInput = '';
+                        operator = null;
+                        updateDisplay();
+                        return;
+                    }
+                    result = prev / current;
+                    break;
+                default:
+                    return; // Should not happen with current button setup
+            }
+
+            // Limit decimal places for cleaner display, avoid floating point issues
+            // Use toPrecision to handle both very small and very large numbers, then convert to string
+            currentInput = parseFloat(result.toPrecision(12)).toString();
+            previousInput = '';
+            operator = null;
+            shouldResetDisplay = true;
+            updateDisplay();
+        }
+
+        buttons.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!target.matches('button')) return;
+
+            if (target.dataset.action === 'clear') {
+                clearAll();
+            } else if (target.dataset.action === 'equals') {
+                calculate();
+            } else if (target.dataset.action === 'add' ||
+                       target.dataset.action === 'subtract' ||
+                       target.dataset.action === 'multiply' ||
+                       target.dataset.action === 'divide') {
+                chooseOperator(target.textContent); // Use textContent for operator symbol
+            } else if (target.dataset.value) {
+                appendNumber(target.dataset.value);
+            }
+        });
+
+        // Initialize display
+        updateDisplay();
+    </script>
+</body>
+</html>
